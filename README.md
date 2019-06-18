@@ -1,6 +1,6 @@
 # Trigger Gotchas
 
-**Check this out if**
+**Check this out if...**
 
 Check this out if you want to learn about "gotchas" when building "before update" or "after update" apex triggers. 
 
@@ -12,11 +12,11 @@ The best practice when writing "before update" or "after update" apex triggers i
 
 i.e. If you want to build a trigger that creates an Order when the Opportunity is closed, you want your trigger to check to see that the Opportunity status *changed* to Closed Won from a different value.  After all, you wouldn't want any update to any Opportunity that is Closed Won to result in a new Order. You just want the update that *makes* the Opportunity "Closed Won" to result in an Order.
 
-In an execution context, recall that triggers run first, and then workflow rules run later[^OOO]. If the workflow rules end up updating the same record, they will cause the same trigger to fire again in the same execution context.
+In an execution context, recall that triggers run first, and then workflow rules run later. If the workflow rules end up updating the same record, they will cause the same trigger to fire again in the same execution context.
 
-There's an important platform consideration here: 
+There's an important platform consideration here[See: Order of Operations]: 
 
-> Salesforce Documentation on *Triggers and Order of Execution*[^OOO]
+> Salesforce Documentation on *Triggers and Order of Execution*
 >> Trigger.old contains a version of the objects before the specific update that fired the trigger. However, there is an exception. When a record is updated and subsequently triggers a workflow rule field update, Trigger.old in the last update trigger doesn’t contain the version of the object immediately before the workflow update, but the object before the initial update was made. For example, suppose that an existing record has a number field with an initial value of 1. A user updates this field to 10, and a workflow rule field update fires and increments it to 11. In the update trigger that fires after the workflow field update, the field value of the object obtained from Trigger.old is the original value of 1, rather than 10, as would typically be the case. 
 
 In other words, if a workflow rule causes a trigger to run again, Trigger.old will contain the content of the record before the trigger had even run initially.
@@ -40,11 +40,11 @@ Consider the use case where an integration sets Opportunity records to "Closed W
 * It runs in bulk. A single request might update multiple Opportunity records.
 * As is standard practice, it uses allOrNone=false (the default SOAP API setting). This means if the integration tried to update 5 opportunity records, but a couple failed because of a validation rule, the others will go through.
 
-How does allOrNone=false work when there are errors? Salesforce says "If there were errors during the first attempt, the runtime engine makes a second attempt that includes only those records that did not generate errors...triggers are re-fired on this subset of records."[^BulkDmlExceptions] 
+How does allOrNone=false work when there are errors? Salesforce says "If there were errors during the first attempt, the runtime engine makes a second attempt that includes only those records that did not generate errors...triggers are re-fired on this subset of records."[See: Bulk Dml Exception Handling]
 
 This means that Salesforce doesn't persist the results of the original trigger run, and re-runs the trigger again, this time only including records that didn't hit validation rules. 
 
-*Crucially, Salesfoce doesn't reset static variables when this occurs*
+*Crucially, Salesfoce doesn't reset static variables when this occurs.*
 
 If there is a static boolean that was set to true after the trigger originally ran, it will still be true when the trigger re-executes. Here, that's a problem, because the results of the first trigger run aren't persisted to the database. This means that the static boolean has effectively caused the trigger to be skipped. That's not good.
 
@@ -63,12 +63,45 @@ I've replicated the challenge, and the limitations with the static boolean solut
 I've re-produced the above issues in the following unit tests. To find the corresponding test class, see `AccountTriggerHandler1Test.cls` and so on. 
 
 Results:
-| Test Method vs. Trigger Handler #               | 1 | 2  | 3 | 
-|-------------------------------------------------|---|----|---|
-| testTrigger_AllOrNoneUpdate_NoWorkflow          | ☑ | ☑ | ☑ | 
-| testTrigger_AllOrNoneUpdate_WorkflowExists      | ☒ | ☑ | ☑ | 
-| testTrigger_PartialSuccessUpdate_NoWorkflow     | ☑ | ☒ | ☒ |  
-| testTrigger_PartialSuccessUpdate_WorkflowExists | ☒ | ☒ | ☒ |  
+
+<pre>
+<table>
+<thead>
+<tr>
+<th>Test Method vs. Trigger Handler #</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>testTrigger_AllOrNoneUpdate_NoWorkflow</td>
+<td>✔</td>
+<td>✔</td>
+<td>✔</td>
+</tr>
+<tr>
+<td>testTrigger_AllOrNoneUpdate_WorkflowExists</td>
+<td>✖</td>
+<td>✔</td>
+<td>✔</td>
+</tr>
+<tr>
+<td>testTrigger_PartialSuccessUpdate_NoWorkflow</td>
+<td>✔</td>
+<td>✖</td>
+<td>✖</td>
+</tr>
+<tr>
+<td>testTrigger_PartialSuccessUpdate_WorkflowExists</td>
+<td>✖</td>
+<td>✖</td>
+<td>✖</td>
+</tr>
+</tbody>
+</table>
+</pre>
 
 Feel free to deploy the files to your developer org and run logs to confirm behavior. Note, I built a very rudimentary injection layer between Account.trigger and any of its implementing handlers to allow test classes to substitute the trigger handler. 
 
@@ -78,10 +111,10 @@ I explored two different ideas for solving for this. Both ideas extend on the so
 
 In AccountTriggerHandler4.cls, I explored the trigger producing a timestamp, and persisting the same timestamp on processed records as well as a static variable. To keep it light-weight, it would use a "before update" operation to persist the timestamp in the database. Every time the trigger runs, it would check to see if the value persisted in the database is less than that in the static variable. If so, then it knows that the results of its initial run were discarded and that it should not be blocked from executing. This worked for the above tests; however, I think it could run into an edge case of its own if Salesforce trigger performance improves and it could be realistic for a trigger's initial execution and it's re-run occuring in the same millisecond.
 
-In AccountTriggerHandler5.cls, I built on this statement documented by Salesforce, describing what happens to governor limits when a trigger is re-tried for a subset of records: "During the second and third attempts, governor limits are reset to their original state before the first attempt" [^BulkDmlExceptions] Essentially, I capture the state of a few governor limits at the end of the "after update" portion of the trigger in a static variable. Then in the beginning of the "before update" portion of the same trigger, I check the state of governor limits against the previously captured state. If current consumed limits (as quantifiable by calls to the `Limits` class) are _less_ than what were previously captured in the static variable, then that means that governor limits must have been reset, which also implies that the original results of the trigger were discarded, and that the trigger should not be blocked from executing. In this proof of concept code, I'm looking at a few limits in particular, but you can extend this as appropriate.
+In AccountTriggerHandler5.cls, I built on this statement documented by Salesforce, describing what happens to governor limits when a trigger is re-tried for a subset of records: "During the second and third attempts, governor limits are reset to their original state before the first attempt" [See: Bulk Dml Exception Handling] Essentially, I capture the state of a few governor limits at the end of the "after update" portion of the trigger in a static variable. Then in the beginning of the "before update" portion of the same trigger, I check the state of governor limits against the previously captured state. If current consumed limits (as quantifiable by calls to the `Limits` class) are _less_ than what were previously captured in the static variable, then that means that governor limits must have been reset, which also implies that the original results of the trigger were discarded, and that the trigger should not be blocked from executing. In this proof of concept code, I'm looking at a few limits in particular, but you can extend this as appropriate.
 
 **Notes**
 Please keep in mind that this public repo is strictly proof of concept code and is not production-ready as-is. For instance, it needs to be clarified and refactored to be reusable across multiple triggers and trigger events. 
 
-[^OOO]:https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_triggers_order_of_execution.htm
-[^BulkDmlExceptions]:https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_dml_bulk_exceptions.htm
+[See: Order of Operations]:https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_triggers_order_of_execution.htm
+[See: Bulk Dml Exception Handling]:https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_dml_bulk_exceptions.htm
