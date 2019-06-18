@@ -45,9 +45,9 @@ How does allOrNone=false work when there are errors? Salesforce says "If there w
 
 This means that Salesforce doesn't persist the results of the original trigger run, and re-runs the trigger again, this time only including records that didn't hit validation rules. 
 
-*Crucially, Salesfoce doesn't reset static variables when this occurs.*
+*Crucially, Salesfoce doesn't reset static variables when this occurs.* This is not a bug. I filed a case in 2014 when I noticed this behavior, and Salesforce said it was working as designed. They confirmed that "static variables are not reverted with a rollback. If a trigger is retried, the static variables in the second run will still have the values that they were initialized to in the first run. Only database values re rolled back." 
 
-If there is a static boolean that was set to true after the trigger originally ran, it will still be true when the trigger re-executes. Here, that's a problem, because the results of the first trigger run aren't persisted to the database. This means that the static boolean has effectively caused the trigger to be skipped. That's not good.
+In other words, If there is a static boolean that was set to true after the trigger originally ran, it will still be true when the trigger re-executes. Here, that's a problem, because the results of the first trigger run aren't persisted to the database. This means that the static boolean has effectively caused the trigger to be skipped. That's not good.
 
 I've replicated the challenge, and the limitations with the static boolean solution in this git repository.
 
