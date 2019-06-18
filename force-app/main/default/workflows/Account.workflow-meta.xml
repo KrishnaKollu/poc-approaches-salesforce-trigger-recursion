@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workflow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldUpdates>
+        <fullName>Set_Description</fullName>
+        <field>Description</field>
+        <formula>&quot;Hello World&quot;</formula>
+        <name>Set Description</name>
+        <notifyAssignee>false</notifyAssignee>
+        <operation>Formula</operation>
+        <protected>false</protected>
+    </fieldUpdates>
+    <rules>
+        <fullName>Workflow Rule</fullName>
+        <actions>
+            <name>Set_Description</name>
+            <type>FieldUpdate</type>
+        </actions>
+        <active>true</active>
+        <description>This workflow rule runs only on Account records where &quot;Run Workflow Rule&quot; = TRUE. It proceeds to set a Description field on the Account to &quot;Hello World&quot;. This change to the Account sparks Account update triggers to be re-executed.</description>
+        <formula>Run_Workflow_Rule__c = TRUE</formula>
+        <triggerType>onAllChanges</triggerType>
+    </rules>
+</Workflow>

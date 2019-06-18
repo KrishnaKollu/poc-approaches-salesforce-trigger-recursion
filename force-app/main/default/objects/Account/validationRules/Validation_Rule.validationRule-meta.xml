@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Validation_Rule</fullName>
+    <active>true</active>
+    <description>This validation rule will fail all Account records where &quot;Fail Validation Rule&quot; = TRUE. It mocks potential errors that might occur on updates to records.</description>
+    <errorConditionFormula>Fail_Validation_Rule__c = TRUE</errorConditionFormula>
+    <errorMessage>There is an error updating this record.</errorMessage>
+</ValidationRule>
