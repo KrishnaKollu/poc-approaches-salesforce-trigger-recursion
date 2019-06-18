@@ -14,7 +14,7 @@ i.e. If you want to build a trigger that creates an Order when the Opportunity i
 
 In an execution context, recall that triggers run first, and then workflow rules run later. If the workflow rules end up updating the same record, they will cause the same trigger to fire again in the same execution context.
 
-There's an important platform consideration here[See: Order of Operations]: 
+There's an important platform consideration here: ([See: Order of Operations]) 
 
 > Salesforce Documentation on *Triggers and Order of Execution*
 >> Trigger.old contains a version of the objects before the specific update that fired the trigger. However, there is an exception. When a record is updated and subsequently triggers a workflow rule field update, Trigger.old in the last update trigger doesn’t contain the version of the object immediately before the workflow update, but the object before the initial update was made. For example, suppose that an existing record has a number field with an initial value of 1. A user updates this field to 10, and a workflow rule field update fires and increments it to 11. In the update trigger that fires after the workflow field update, the field value of the object obtained from Trigger.old is the original value of 1, rather than 10, as would typically be the case. 
@@ -32,6 +32,7 @@ This means your trigger will create a duplicate Order. That's not good.
 So how do you deal with this? You can consider refactoring away from using workflow rules all together. But here's the catch... if someone builds a workflow rule in the future, or if you install a managed package that *happens* to use a workflow rule on that object, then you're back in the same danger zone.
 
 **What not to do**
+
 A popular approach to addressing this challenge is to implement a static boolean to store whether the trigger ran. If the static boolean says the trigger didn't run, then proceed with the trigger; if not, stop. 
 
 This will work for the use case I mentioned earlier with the workflow. But it introduces another challenge.
@@ -40,7 +41,7 @@ Consider the use case where an integration sets Opportunity records to "Closed W
 * It runs in bulk. A single request might update multiple Opportunity records.
 * As is standard practice, it uses allOrNone=false (the default SOAP API setting). This means if the integration tried to update 5 opportunity records, but a couple failed because of a validation rule, the others will go through.
 
-How does allOrNone=false work when there are errors? Salesforce says "If there were errors during the first attempt, the runtime engine makes a second attempt that includes only those records that did not generate errors...triggers are re-fired on this subset of records."[See: Bulk Dml Exception Handling]
+How does allOrNone=false work when there are errors? Salesforce says "If there were errors during the first attempt, the runtime engine makes a second attempt that includes only those records that did not generate errors...triggers are re-fired on this subset of records." ([See: Bulk Dml Exception Handling])
 
 This means that Salesforce doesn't persist the results of the original trigger run, and re-runs the trigger again, this time only including records that didn't hit validation rules. 
 
@@ -111,10 +112,17 @@ I explored two different ideas for solving for this. Both ideas extend on the so
 
 In AccountTriggerHandler4.cls, I explored the trigger producing a timestamp, and persisting the same timestamp on processed records as well as a static variable. To keep it light-weight, it would use a "before update" operation to persist the timestamp in the database. Every time the trigger runs, it would check to see if the value persisted in the database is less than that in the static variable. If so, then it knows that the results of its initial run were discarded and that it should not be blocked from executing. This worked for the above tests; however, I think it could run into an edge case of its own if Salesforce trigger performance improves and it could be realistic for a trigger's initial execution and it's re-run occuring in the same millisecond.
 
-In AccountTriggerHandler5.cls, I built on this statement documented by Salesforce, describing what happens to governor limits when a trigger is re-tried for a subset of records: "During the second and third attempts, governor limits are reset to their original state before the first attempt" [See: Bulk Dml Exception Handling] Essentially, I capture the state of a few governor limits at the end of the "after update" portion of the trigger in a static variable. Then in the beginning of the "before update" portion of the same trigger, I check the state of governor limits against the previously captured state. If current consumed limits (as quantifiable by calls to the `Limits` class) are _less_ than what were previously captured in the static variable, then that means that governor limits must have been reset, which also implies that the original results of the trigger were discarded, and that the trigger should not be blocked from executing. In this proof of concept code, I'm looking at a few limits in particular, but you can extend this as appropriate.
+In AccountTriggerHandler5.cls, I built on this statement documented by Salesforce, describing what happens to governor limits when a trigger is re-tried for a subset of records: "During the second and third attempts, governor limits are reset to their original state before the first attempt" ([See: Bulk Dml Exception Handling]) 
+
+Essentially, I capture the state of a few governor limits at the end of the "after update" portion of the trigger in a static variable. Then in the beginning of the "before update" portion of the same trigger, I check the state of governor limits against the previously captured state. If current consumed limits (as quantifiable by calls to the `Limits` class) are _less_ than what were previously captured in the static variable, then that means that governor limits must have been reset, which also implies that the original results of the trigger were discarded, and that the trigger should not be blocked from executing. In this proof of concept code, I'm looking at a few limits in particular, but you can extend this as appropriate.
 
 **Notes**
-Please keep in mind that this public repo is strictly proof of concept code and is not production-ready as-is. For instance, it needs to be clarified and refactored to be reusable across multiple triggers and trigger events. 
+
+My main motivation with this repo is to draw attention to the lifetime of a static variable in a partial success operation, and how that influences trigger design. In a nutshell, leveraging simple static booleans to manage trigger recursion is unsafe and could result in your trigger not firing consistently. 
+
+Please keep in mind that this public repo is strictly proof of concept code and is not production-ready as-is. For instance, it needs to be clarified and refactored to be reusable across multiple triggers and trigger events.
+
+Please feel free to reach out and share suggestions and thoughts. 
 
 [See: Order of Operations]:https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_triggers_order_of_execution.htm
 [See: Bulk Dml Exception Handling]:https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_dml_bulk_exceptions.htm
