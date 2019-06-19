@@ -176,7 +176,7 @@ Of the above approaches, I favor AccountTriggerHandler6.cls.
 
 My main motivation with this repo is to draw attention to the lifetime of a static variable in a partial success operation and how that influences trigger design. In a nutshell, leveraging just static variables to manage trigger recursion is unsafe and could result in your trigger not firing consistently.
 
-Please keep in mind that this public repo is strictly proof of concept code and is not production-ready as-is. For instance, it needs to be clarified and refactored to be reusable across multiple triggers and trigger events. 
+Please keep in mind that this public repo is strictly proof of concept code and is not production-ready as-is. For instance, the recursion handling specific code needs to refactored to be reusable across multiple triggers and trigger events. 
 
 Please feel free to reach out and share suggestions / thoughts / concerns. 
 
