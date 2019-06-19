@@ -131,7 +131,7 @@ Results:
 
 Feel free to deploy the files to your developer org and run logs to confirm behavior. Note, I built a very rudimentary injection layer between Account.trigger and any of its implementing handlers to allow test classes to substitute the trigger handler. 
 
-**Possible Solution Approaches**
+**Alternate Approaches**
 
 It's possible to solve for this on a case by case basis. For instance, you can check to see if the child records were created before creating them. However, that eats up governor limits, and implementing that type of logic in multiple triggers would further consume already scare resources. What I'm exploring here however are more generic solutions that don't require performing DML operations or queries.
 
