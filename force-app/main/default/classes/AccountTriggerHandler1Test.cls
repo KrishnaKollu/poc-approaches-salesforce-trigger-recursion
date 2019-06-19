@@ -28,4 +28,28 @@ private class AccountTriggerHandler1Test {
     {
         baseTests.testTrigger_PartialSuccessUpdate_WorkflowExists();
     }
+
+    @isTest
+    public static void testTrigger_AllOrNoneUpdate_NoWorkflow_BulkDML()
+    {
+        baseTests.testTrigger_AllOrNoneUpdate_NoWorkflow_BulkDML();
+    }
+
+    @isTest
+    public static void testTrigger_AllOrNoneUpdate_WorkflowExists_BulkDML()
+    {
+        baseTests.testTrigger_AllOrNoneUpdate_WorkflowExists_BulkDML();
+    }
+
+    @isTest
+    public static void testTrigger_PartialSuccessUpdate_NoWorkflow_BulkDML()
+    {
+        baseTests.testTrigger_PartialSuccessUpdate_NoWorkflow_BulkDML();
+    }
+
+    @isTest
+    public static void testTrigger_PartialSuccessUpdate_WorkflowExists_BulkDML()
+    {
+        baseTests.testTrigger_PartialSuccessUpdate_WorkflowExists_BulkDML();
+    }
 }
