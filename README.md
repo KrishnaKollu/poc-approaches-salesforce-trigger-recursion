@@ -68,20 +68,20 @@ These are handlers that re-produce common gotchas with using static variables ex
 
 I've re-produced the above issues in the following unit tests. To find the corresponding test class, see `AccountTriggerHandler1Test.cls` and so on. 
 
-Results:
+Below are the test results. The numbers on the horizontal axis correspond to the trigger handler number.
 
-|Test Method vs. Trigger Handler #|1|2|3|
+||1|2|3|
 |--- |--- |--- |--- |
-|testTrigger_AllOrNoneUpdate_NoWorkflow|✔|✔|✔|
-|testTrigger_AllOrNoneUpdate_WorkflowExists|✖|✔|✔|
-|testTrigger_AllOrNoneUpdate_NoWorkflow_BulkDML|✔|✖|✔|
-|testTrigger_AllOrNoneUpdate_WorkflowExists_BulkDML|✖|✖|✔|
-|testTrigger_PartialSuccessUpdate_NoWorkflow|✔|✖|✖|
-|testTrigger_PartialSuccessUpdate_WorkflowExists|✖|✖|✖|
-|testTrigger_PartialSuccessUpdate_NoWorkflow_BulkDML|✔|✖|✖|
-|testTrigger_PartialSuccessUpdate_WorkflowExists_BulkDML|✖|✖|✖|
+|`testTrigger_AllOrNoneUpdate_NoWorkflow`|✔|✔|✔|
+|`testTrigger_AllOrNoneUpdate_WorkflowExists`|✖|✔|✔|
+|`testTrigger_AllOrNoneUpdate_NoWorkflow_BulkDML`|✔|✖|✔|
+|`testTrigger_AllOrNoneUpdate_WorkflowExists_BulkDML`|✖|✖|✔|
+|`testTrigger_PartialSuccessUpdate_NoWorkflow`|✔|✖|✖|
+|`testTrigger_PartialSuccessUpdate_WorkflowExists`|✖|✖|✖|
+|`testTrigger_PartialSuccessUpdate_NoWorkflow_BulkDML`|✔|✖|✖|
+|`testTrigger_PartialSuccessUpdate_WorkflowExists_BulkDML`|✖|✖|✖|
 
-Feel free to deploy the files to your developer org and run logs to confirm behavior. Note, I built a very rudimentary injection layer between Account.trigger and any of its implementing handlers to allow test classes to substitute the trigger handler. 
+Note, I built a very rudimentary injection layer between Account.trigger and any of its implementing handlers to allow test classes to substitute the trigger handler. 
 
 **Alternate Approaches**
 
