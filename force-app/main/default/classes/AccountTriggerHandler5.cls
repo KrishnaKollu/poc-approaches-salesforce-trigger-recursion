@@ -50,6 +50,7 @@ public with sharing class AccountTriggerHandler5 implements ITriggerHandler {
         Boolean previousTriggerRunResultsDiscarded = currentLimits.areLessThan(lastRecordedLimits);
         if(previousTriggerRunResultsDiscarded)
             recordsToSkip.clear();
+        lastRecordedLimits = currentLimits;
     }
 
     private void recordLimits()

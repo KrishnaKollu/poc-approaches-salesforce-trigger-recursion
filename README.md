@@ -4,7 +4,7 @@
 
 Check this out if you want to learn about "gotchas" when building "before update" or "after update" apex triggers. 
 
-Most notably, the popular recommendation to use a `static` boolean to control trigger recursion has a *catch*. It might lead to the trigger not firing at all on a data load or an integration. I've proposed a couple alternative approaches that work with Salesforce behavior on allOrNone=false (partial success) operations.
+Most notably, the popular recommendation to use a `static` boolean to control trigger recursion has a *catch*. It could lead to the trigger not firing at all on a data load or an integration. I've proposed here alternative approaches that work with Salesforce behavior on allOrNone=false (partial success) operations - usually default behavior of a data load / integration. 
 
 **Motivation**
 
@@ -106,23 +106,52 @@ Results:
 
 Feel free to deploy the files to your developer org and run logs to confirm behavior. Note, I built a very rudimentary injection layer between Account.trigger and any of its implementing handlers to allow test classes to substitute the trigger handler. 
 
-**Proposed Solution Approaches**
+**Possible Solution Approaches**
 
-I explored two different ideas for solving for this. Both ideas extend on the solution in AccountTriggerHandler3.cls, but keep in mind that static variables don't get rolled back when Salesforce does error handling in a partial success operation, and re-runs the trigger with a subset of records.
+I explored three different ideas for solving for this. All ideas extend on the solution in AccountTriggerHandler3.cls, but keep in mind that static variables don't get rolled back when Salesforce does error handling in a partial success operation, and re-runs the trigger with a subset of records.
 
-In AccountTriggerHandler4.cls, I explored the trigger producing a timestamp, and persisting the same timestamp on processed records as well as a static variable. To keep it light-weight, it would use a "before update" operation to persist the timestamp in the database. Every time the trigger runs, it would check to see if the value persisted in the database is less than that in the static variable. If so, then it knows that the results of its initial run were discarded and that it should not be blocked from executing. This worked for the above tests; however, I think it could run into an edge case of its own if Salesforce trigger performance improves and it could be realistic for a trigger's initial execution and it's re-run occuring in the same millisecond.
+*AccountTriggerHandler4.cls*
+* Summary
+    * Trigger produces a timestamp, and persisting the same timestamp on processed records as well as a static variable. 
+    * To keep it light-weight, it will use a "before update" operation to persist the timestamp in the database. 
+    * When the trigger runs, if a record was flagged in a static set as having already been processed by this trigger, it will check to see if the value persisted in the database is less than that in the static variable. If so, then it knows that the results of its initial run were discarded and that it should not be blocked from executing. 
+    * Requires a custom field on object.
+* Pros
+    * This works for the use cases tested above.
+* Cons
+    * Requires a custom field on object.
+    * Could run into an edge case of its own if Salesforce trigger performance improves and it could be realistic for a trigger's initial execution and it's re-execution to occur in the same millisecond.
 
-In AccountTriggerHandler5.cls, I built on this statement documented by Salesforce, describing what happens to governor limits when a trigger is re-tried for a subset of records: "During the second and third attempts, governor limits are reset to their original state before the first attempt" ([See: Bulk Dml Exception Handling]) 
+*AccountTriggerHandler5.cls*
+* Summary
+    * Capture the state of key governor limits at the end of the "after update" portion of the trigger in a static variable.
+    * At the start of the "before update" portion of the same trigger, check the state of governor limits against the previously captured state. If current consumed limits (as quantifiable by calls to the `Limits` class) are _less_ than what were previously captured in the static variable, then this implies that governor limits must have been reset, which also implies that the original results of the trigger were discarded, and that the trigger should not be blocked from executing
+    * In this proof of concept code, I'm looking at a few limits in particular, but it can be extended as appropriate.
+* Pros
+    * This works for the use cases tested above.
+    * Doesn't require a custom field on object.
+* Cons
+    * Doesn't work if trigger execution is non-deterministic. i.e. if there are multiple triggers on the same object.
 
-Essentially, I capture the state of a few governor limits at the end of the "after update" portion of the trigger in a static variable. Then in the beginning of the "before update" portion of the same trigger, I check the state of governor limits against the previously captured state. If current consumed limits (as quantifiable by calls to the `Limits` class) are _less_ than what were previously captured in the static variable, then that means that governor limits must have been reset, which also implies that the original results of the trigger were discarded, and that the trigger should not be blocked from executing. In this proof of concept code, I'm looking at a few limits in particular, but you can extend this as appropriate.
+*AccountTriggerHandler6.cls*
+* Summary
+    * Trigger produces a UUID scoped to the trigger execution, and persisting the same value on processed records as well as a static variable. 
+    * To keep it light-weight, it will use a "before update" operation to persist the UUID in the database. 
+    * When the trigger runs, if a record was flagged in a static set as having already been processed by this trigger, it will then check to see if the UUID persisted in the database is different from that in the static variable. If so, then it knows that the results of its initial run were discarded and that it should not be blocked from executing.
+* Pros
+    * This works for the use cases tested above.
+* Cons
+    * Requires a custom field on object.
 
-**Notes**
+Of these approaches, I favor AccountTriggerHandler6.cls.
 
-My main motivation with this repo is to draw attention to the lifetime of a static variable in a partial success operation, and how that influences trigger design. In a nutshell, leveraging simple static booleans to manage trigger recursion is unsafe and could result in your trigger not firing consistently. 
+**Last Words**
 
-Please keep in mind that this public repo is strictly proof of concept code and is not production-ready as-is. For instance, it needs to be clarified and refactored to be reusable across multiple triggers and trigger events.
+My main motivation with this repo is to draw attention to the lifetime of a static variable in a partial success operation and how that influences trigger design. In a nutshell, leveraging simple static booleans to manage trigger recursion is unsafe and could result in your trigger not firing consistently. 
 
-Please feel free to reach out and share suggestions and thoughts. 
+Please keep in mind that this public repo is strictly proof of concept code and is not production-ready as-is. For instance, it needs to be clarified and refactored to be reusable across multiple triggers and trigger events. 
+
+Please feel free to reach out and share suggestions / thoughts / concerns. 
 
 [See: Order of Operations]:https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_triggers_order_of_execution.htm
 [See: Bulk Dml Exception Handling]:https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_dml_bulk_exceptions.htm

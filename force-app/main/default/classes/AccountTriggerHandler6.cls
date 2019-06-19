@@ -3,21 +3,23 @@
  * were discarded. This could occur in a database update where allOrNone=false, if there were initially some failures, and Salesforce 
  * decides to re-run the trigger for a subset of records that didn't report issues.
  *
- * The trigger produces a timestamp, and persists the same timestamp on processed records as well as a static variable. 
- * To keep it light-weight, it will use a "before update" operation to persist the timestamp in the database. 
- * When the trigger runs, if a record was flagged in a static set as having already been processed by this trigger, it will check 
- * to see if the timestamp persisted in the database is less than that in the static variable. If so, then it knows that the results 
- * of its initial run were discarded and that it should not be blocked from executing. 
+ * This trigger handler creates a UUID scoped to the trigger execution, and persists that value on processed records as well as a 
+ * static variable. To keep it light-weight, it will use a "before update" operation to persist that UUID in the database. 
+ * When the trigger runs, if a record was flagged in a static set as having already been processed by this trigger, it will then check 
+ * to see if the UUID persisted in the database is different from that in the static variable. If so, then it knows that the results 
+ * of its initial run were discarded and that it should not be blocked from executing.
  *
- * This passes tests in AccountTriggerHandler4Test, but could run into an edge case of its own if Salesforce trigger performance improves
- * and it could be realistic for a trigger's initial execution and it's re-run occuring in the same millisecond.
- * 
  * For demonstration, this example has logic in the handler. The best practice is delegating to service methods.
  * There's also the opportunity to refactor this logic to make it more generally re-usable. 
  */
-public with sharing class AccountTriggerHandler4 implements ITriggerHandler {
-    private static Map<Id, Long> timestampById = new Map<Id, Long>();
+public with sharing class AccountTriggerHandler6 implements ITriggerHandler {
     private static Set<Id> recordsToSkip = new Set<Id>();
+    private static String triggerContextId;
+
+    public AccountTriggerHandler6()
+    {
+        newTriggerContextId();
+    }
 
     public void onBeforeUpdate(List<SObject> updatedRecords, Map<Id, SObject> oldRecords) {
         repairRecordsToSkip((List<Account>) updatedRecords);
@@ -48,36 +50,37 @@ public with sharing class AccountTriggerHandler4 implements ITriggerHandler {
     private void repairRecordsToSkip(List<Account> updatedRecords)
     {
         Boolean previousTriggerRunResultsDiscarded = didRollbackOccur(updatedRecords);
-        if(previousTriggerRunResultsDiscarded)
+        if(previousTriggerRunResultsDiscarded) {
             recordsToSkip.clear();
-        trackTimestamps(updatedRecords);
+            newTriggerContextId();
+        }
+        persistTriggerContextId(updatedRecords);
     }
 
     private Boolean didRollbackOccur(List<Account> updatedRecords)
     {
         for(Account record : updatedRecords)
         {
-            if(recordsToSkip.contains(record.Id) && timestampById.containsKey(record.Id))
+            if(recordsToSkip.contains(record.Id) && record.Apex_Trigger_Context_Id__c == triggerContextId)
             {
-                Long persistedTimestamp = (record.Apex_Trigger_Timestamp__c != null ? Long.valueOf(record.Apex_Trigger_Timestamp__c) : 0);
-                Long lastTriggerRanTimestamp = timestampById.get(record.Id);
-                Boolean rollBackOccured = persistedTimestamp < lastTriggerRanTimestamp;
-                
-                if(rollBackOccured)
-                    return true;
+                return false;
             }
         }
-
-        return false;
+        return true;
+    }
+    
+    private void newTriggerContextId()
+    {
+        Blob aes = Crypto.generateAesKey(256);
+	    String hex = EncodingUtil.convertToHex(aes);
+        triggerContextId = System.currentTimeMillis()+'-'+hex;
     }
 
-    private void trackTimestamps(List<Account> updatedRecords)
+    private void persistTriggerContextId(List<Account> records)
     {
-        Long nowTimestamp = System.currentTimeMillis();
-        for(Account record : updatedRecords)
+        for(Account record : records)
         {
-            record.Apex_Trigger_Timestamp__c = String.valueOf(nowTimestamp);
-            timestampById.put(record.Id, nowTimestamp);
+            record.Apex_Trigger_Context_Id__c = triggerContextId;
         }
     }
 }

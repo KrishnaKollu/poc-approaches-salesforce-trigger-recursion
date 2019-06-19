@@ -1,6 +1,6 @@
 public with sharing class TriggerHandlers {
     private static Map<SObjectType, ITriggerHandler> handlerByType = new Map<SObjectType, ITriggerHandler> {
-        Account.SObjectType => (new AccountTriggerHandler5())
+        Account.SObjectType => (new AccountTriggerHandler6())
     };
 
     public static void setMockHandler(SObjectType objectType, ITriggerHandler handler)

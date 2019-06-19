@@ -84,4 +84,25 @@ public with sharing class AccountTriggerHandlerBaseTest {
         System.assertEquals(1, resultingTasks.size(), 'When the BillingStreet field is changed on Accounts, it should result in a single Task record for each Account');
         System.assertEquals(testAccounts[0].Id, resultingTasks[0].WhatId, 'When an Account\'s BillingStreet is changed, the resulting Task record must be associated to the Account');
     }
+
+    public void testTrigger_AllOrNoneUpdate_NoWorkflow_BulkDML()
+    {
+        List<Account> testAccounts = new List<Account>();
+        for(Integer i = 0; i < 450; i++)
+        {
+            testAccounts.add(new Account(Name='ACME', BillingStreet='0'));
+        }
+        insert testAccounts;
+
+        Test.startTest();
+            for(Account testAccount : testAccounts)
+            {
+                testAccount.BillingStreet = 'Street Changed';
+            }
+            update testAccounts;
+        Test.stopTest();
+
+        List<AggregateResult> results = [Select WhatId, count(Id) From Task Group By WhatId Having count(id)=1];
+        System.assertEquals(testAccounts.size(), results.size(), 'When the BillingStreet field is changed on Accounts, it should result in a single Task record for each Account');
+    }
 }

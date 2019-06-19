@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Apex_Trigger_Context_Id__c</fullName>
+    <description>This stores an identifier for a given trigger execution context. Note: if partial success operation resulted in a earlier run of the trigger being rolled back, and triggers being re-run on a subset of records, then this will be set to a different identifier.</description>
+    <externalId>false</externalId>
+    <label>Apex Trigger Context Id</label>
+    <length>255</length>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>
