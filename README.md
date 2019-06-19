@@ -4,7 +4,7 @@
 
 Check this out if you want to learn about "gotchas" when building "before update" or "after update" apex triggers. 
 
-Most notably, popular recommendations to use a `static` boolean or a static `Set<Id>` to control trigger recursion have a *catch*. It could lead to the trigger not firing at all on a data load or an integration. I've proposed here alternative approaches that work with Salesforce behavior on allOrNone=false (partial success) operations - usually default behavior of a data load / integration. 
+Most notably, popular recommendations to use a `static` boolean or a static `Set<Id>` to control trigger recursion have a *catch*. It could lead to the trigger not firing at all on a data load or an integration. I've proposed here alternative approaches that work with Salesforce behavior on allOrNone=false (partial success) operations - usually default behavior of a data load or integration. 
 
 **Motivation**
 
@@ -45,7 +45,7 @@ How does allOrNone=false work when there are errors? Salesforce says "If there w
 
 This means that Salesforce doesn't persist the results of the original trigger run, and re-runs the trigger again, this time only including records that didn't hit validation rules. 
 
-*Crucially, Salesfoce doesn't reset static variables when this occurs.* This is not a bug. I filed a case sometime back on this behavior. It went to R&D who concluded that it was WAD (working as designed). They confirmed that "static variables are not reverted with a rollback. If a trigger is retried, the static variables in the second run will still have the values that they were initialized to in the first run. Only database values re rolled back." 
+*Crucially, Salesforce doesn't reset static variables when this occurs.* This is not a bug. I filed a case sometime back on this behavior. It went to R&D who concluded that it was WAD (working as designed). They confirmed that "static variables are not reverted with a rollback. If a trigger is retried, the static variables in the second run will still have the values that they were initialized to in the first run. Only database values re rolled back." 
 
 In other words, If there is a static boolean that was set to true after the trigger originally ran, it will still be true when the trigger re-executes. Here, that's a problem, because the results of the first trigger run aren't persisted to the database. This means that the static boolean has effectively caused the trigger to be skipped. That's not good.
 
@@ -139,11 +139,11 @@ Feel free to deploy the files to your developer org and run logs to confirm beha
 
 It's possible to solve for this on a case by case basis. For instance, you can check to see if the child records were created before creating them. However, that eats up governor limits, and implementing that type of logic in multiple triggers would further consume already scare resources. What I'm exploring here however are more generic solutions that don't require performing DML operations or queries.
 
-I explored three different ideas for solving for these challenges. All ideas extend on the solution in AccountTriggerHandler3.cls, but keep in mind that static variables don't get rolled back when Salesforce does error handling in a partial success operation and re-runs the trigger with a subset of records.
+I explored three different ideas for solving these challenges. All ideas extend on the solution in AccountTriggerHandler3.cls, but keep in mind that static variables don't get rolled back when Salesforce does error handling in a partial success operation and re-runs the trigger with a subset of records.
 
 *AccountTriggerHandler4.cls*
 * Summary
-    * Trigger produces a timestamp, and persists the same timestamp on processed records as well as a static variable. 
+    * Trigger produces a timestamp and persists the same timestamp on processed records as well as a static variable. 
     * To keep it light-weight, it will use a "before update" operation to persist the timestamp in the database. This avoids having to do a more expensive DML operation.
     * When the trigger runs, if a record was flagged in a static set as having already been processed by this trigger, it will check to see if the timestamp persisted in the database is less than that in the static variable. If so, then it knows that the results of its initial run were discarded and that it should not be blocked from executing. 
 * Pros
@@ -156,7 +156,7 @@ I explored three different ideas for solving for these challenges. All ideas ext
 * Summary
     * Background: Salesforce documents that "During the second and third attempts, governor limits are reset to their original state* before the first attempt". This handler tries to detect whether a rollback occurred based on the limits being reset.
     * Capture the state of key governor limits at the end of the "after update" portion of the trigger in a static variable.
-    * At the start of the "before update" portion of the same trigger, check the state of governor limits against the previously captured state. If current consumed limits (as quantifiable by calls to the `Limits` class) are _less_ than what were previously captured in the static variable, then this implies that governor limits must have been reset, which also implies that the original results of the trigger were discarded, and that the trigger should not be blocked from executing
+    * At the start of the "before update" portion of the same trigger, check the state of governor limits against the previously captured state. If current consumed limits (as quantifiable by calls to the `Limits` class) are _less_ than what was previously captured in the static variable, then this implies that governor limits must have been reset, which also implies that the original results of the trigger were discarded and that the trigger should not be blocked from executing
     * In this proof of concept code, I'm looking at a few limits in particular, but it can be extended as appropriate.
 * Pros
     * This works for all test cases in AccountTriggerHandlerBaseTest.
@@ -166,7 +166,7 @@ I explored three different ideas for solving for these challenges. All ideas ext
 
 *AccountTriggerHandler6.cls*
 * Summary
-    * Trigger produces a UUID scoped to the trigger execution, and persists the same value on processed records as well as a static variable. 
+    * Trigger produces a UUID scoped to the trigger execution and persists the same value on processed records as well as a static variable. 
     * To keep it light-weight, it will use a "before update" operation to persist the UUID in the database. This avoids having to do a more expensive DML operation.
     * When the trigger runs, if a record was flagged in a static set as having already been processed by this trigger, it will then check to see if the UUID persisted in the database is different from that in the static variable. If so, then it knows that the results of its initial run were discarded and that it should not be blocked from executing.
 * Pros
@@ -182,7 +182,7 @@ My main motivation with this repo is to draw attention to the lifetime of a stat
 
 Please keep in mind that this public repo is strictly proof of concept code and is not production-ready as-is. For instance, the recursion handling specific code needs to refactored to be reusable across multiple triggers and trigger events and not as coupled to the business logic. 
 
-Please feel free to reach out and share suggestions / thoughts / concerns. 
+Please feel free to reach out and share suggestions/thoughts/concerns. 
 
 [See: Order of Operations]:https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_triggers_order_of_execution.htm
 [See: Bulk Dml Exception Handling]:https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_dml_bulk_exceptions.htm
