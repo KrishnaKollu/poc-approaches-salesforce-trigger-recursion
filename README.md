@@ -70,68 +70,16 @@ I've re-produced the above issues in the following unit tests. To find the corre
 
 Results:
 
-<pre>
-<table>
-<thead>
-<tr>
-<th>Test Method vs. Trigger Handler #</th>
-<th>1</th>
-<th>2</th>
-<th>3</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>testTrigger_AllOrNoneUpdate_NoWorkflow</td>
-<td>✔</td>
-<td>✔</td>
-<td>✔</td>
-</tr>
-<tr>
-<td>testTrigger_AllOrNoneUpdate_WorkflowExists</td>
-<td>✖</td>
-<td>✔</td>
-<td>✔</td>
-</tr>
-<tr>
-<td>testTrigger_AllOrNoneUpdate_NoWorkflow_BulkDML</td>
-<td>✔</td>
-<td>✖</td>
-<td>✔</td>
-</tr>
-<tr>
-<td>testTrigger_AllOrNoneUpdate_WorkflowExists_BulkDML</td>
-<td>✖</td>
-<td>✖</td>
-<td>✔</td>
-</tr>
-<tr>
-<tr>
-<td>testTrigger_PartialSuccessUpdate_NoWorkflow</td>
-<td>✔</td>
-<td>✖</td>
-<td>✖</td>
-</tr>
-<tr>
-<td>testTrigger_PartialSuccessUpdate_WorkflowExists</td>
-<td>✖</td>
-<td>✖</td>
-<td>✖</td>
-</tr>
-<td>testTrigger_PartialSuccessUpdate_NoWorkflow_BulkDML</td>
-<td>✔</td>
-<td>✖</td>
-<td>✖</td>
-</tr>
-<tr>
-<td>testTrigger_PartialSuccessUpdate_WorkflowExists_BulkDML</td>
-<td>✖</td>
-<td>✖</td>
-<td>✖</td>
-</tr>
-</tbody>
-</table>
-</pre>
+|Test Method vs. Trigger Handler #|1|2|3|
+|--- |--- |--- |--- |
+|testTrigger_AllOrNoneUpdate_NoWorkflow|✔|✔|✔|
+|testTrigger_AllOrNoneUpdate_WorkflowExists|✖|✔|✔|
+|testTrigger_AllOrNoneUpdate_NoWorkflow_BulkDML|✔|✖|✔|
+|testTrigger_AllOrNoneUpdate_WorkflowExists_BulkDML|✖|✖|✔|
+|testTrigger_PartialSuccessUpdate_NoWorkflow|✔|✖|✖|
+|testTrigger_PartialSuccessUpdate_WorkflowExists|✖|✖|✖|
+|testTrigger_PartialSuccessUpdate_NoWorkflow_BulkDML|✔|✖|✖|
+|testTrigger_PartialSuccessUpdate_WorkflowExists_BulkDML|✖|✖|✖|
 
 Feel free to deploy the files to your developer org and run logs to confirm behavior. Note, I built a very rudimentary injection layer between Account.trigger and any of its implementing handlers to allow test classes to substitute the trigger handler. 
 
