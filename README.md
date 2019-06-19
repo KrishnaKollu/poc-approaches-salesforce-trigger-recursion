@@ -4,7 +4,7 @@
 
 Check this out if you want to learn about "gotchas" when building "before update" or "after update" apex triggers. 
 
-Most notably, popular recommendations to use a `static` boolean or a static `set<id>` to control trigger recursion has a *catch*. It could lead to the trigger not firing at all on a data load or an integration. I've proposed here alternative approaches that work with Salesforce behavior on allOrNone=false (partial success) operations - usually default behavior of a data load / integration. 
+Most notably, popular recommendations to use a `static` boolean or a static `set<id>` to control trigger recursion have a *catch*. It could lead to the trigger not firing at all on a data load or an integration. I've proposed here alternative approaches that work with Salesforce behavior on allOrNone=false (partial success) operations - usually default behavior of a data load / integration. 
 
 **Motivation**
 
