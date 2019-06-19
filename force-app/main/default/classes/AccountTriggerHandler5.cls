@@ -5,8 +5,15 @@
  *
  * Salesforce documents that "During the second and third attempts, governor limits are reset to their original state 
  * before the first attempt". By capturing the state of the limits towards the end of an attempt, and then comparing those
- * to the state of the limits at the beginning of an attempt, it is possible to detect if the earlier trigger run results were discarded,
+ * to the state of the limits at the beginning of an attempt, it could be possible to detect if the earlier trigger run results were discarded,
  * which means the trigger must not be blocked from running this time for any record.
+ *
+ * At the start of the "before update" portion of the same trigger, check the state of governor limits against the previously
+ * captured state. If current consumed limits (as quantifiable by calls to the `Limits` class) are _less_ than what were previously
+ * captured in the static variable, then this implies that governor limits must have been reset, which also implies that the original 
+ * results of the trigger were discarded, and that the trigger should not be blocked from executing.
+ *
+ * Note: This might not work if trigger execution is non-deterministic. i.e. if there are multiple triggers on the same object.
  * 
  * For demonstration, this example has logic in the handler. The best practice is delegating to service methods.
  * There's also the opportunity to refactor this logic to make it more generally re-usable. 
