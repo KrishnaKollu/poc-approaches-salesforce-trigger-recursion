@@ -4,7 +4,7 @@
 
 Check this out if you want to learn about "gotchas" when building "before update" or "after update" apex triggers. 
 
-Most notably, popular recommendations to use a `static` boolean or a static `set<id>` to control trigger recursion have a *catch*. It could lead to the trigger not firing at all on a data load or an integration. I've proposed here alternative approaches that work with Salesforce behavior on allOrNone=false (partial success) operations - usually default behavior of a data load / integration. 
+Most notably, popular recommendations to use a `static` boolean or a static `Set<Id>` to control trigger recursion have a *catch*. It could lead to the trigger not firing at all on a data load or an integration. I've proposed here alternative approaches that work with Salesforce behavior on allOrNone=false (partial success) operations - usually default behavior of a data load / integration. 
 
 **Motivation**
 
@@ -49,7 +49,11 @@ This means that Salesforce doesn't persist the results of the original trigger r
 
 In other words, If there is a static boolean that was set to true after the trigger originally ran, it will still be true when the trigger re-executes. Here, that's a problem, because the results of the first trigger run aren't persisted to the database. This means that the static boolean has effectively caused the trigger to be skipped. That's not good.
 
-I've replicated the challenge, and the limitations with the static boolean solution in this git repository. 
+I've replicated these limitations with the static boolean solution in this git repository. Please feel free to deploy this repo to a scratch org and see for yourself.
+
+The project has a trigger on Account that will create a Task when the BillingStreet field changes on the Account. I've implemented a number of trigger handlers that implement the same business logic but have different instrumentations for blocking trigger recursion. 
+
+These are handlers that re-produce common gotchas with using static variables exclusively to do recursion blocking:
 
 * AccountTriggerHandler1.cls 
     * This has no logic to block recursion.
