@@ -114,9 +114,9 @@ I explored three different ideas for solving these challenges. All ideas extend 
 
 *AccountTriggerHandler6.cls*
 * Summary
-    * Trigger produces a UUID scoped to the trigger execution and persists the same value on processed records as well as a static variable. 
-    * To keep it light-weight, it will use a "before update" operation to persist the UUID in the database. This avoids having to do a more expensive DML operation.
-    * When the trigger runs, if a record was flagged in a static set as having already been processed by this trigger, it will then check to see if the UUID persisted in the database is different from that in the static variable. If so, then it knows that the results of its initial run were discarded and that it should not be blocked from executing.
+    * Trigger produces a unique identifier scoped to the trigger execution and persists the same value on processed records as well as a static variable. 
+    * To keep it light-weight, it will use a "before update" operation to persist the same identifier in the database. This avoids having to do a more expensive DML operation.
+    * When the trigger runs, if a record was flagged in a static set as having already been processed by this trigger, it will then check to see if the identifier persisted in the database is different from that in the static variable. If so, then it knows that the results of its initial run were discarded and that it should not be blocked from executing.
 * Pros
     * This works for all test cases in AccountTriggerHandlerBaseTest.
 * Cons
