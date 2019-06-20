@@ -3,10 +3,10 @@
  * were discarded. This could occur in a database update where allOrNone=false, if there were initially some failures, and Salesforce 
  * decides to re-run the trigger for a subset of records that didn't report issues.
  *
- * This trigger handler creates a UUID scoped to the trigger execution, and persists that value on processed records as well as a 
- * static variable. To keep it light-weight, it will use a "before update" operation to persist that UUID in the database. 
+ * This trigger handler creates a unique identifier scoped to the trigger execution, and persists that value on processed records as well as a 
+ * static variable. To keep it light-weight, it will use a "before update" operation to persist that identifier in the database. 
  * When the trigger runs, if a record was flagged in a static set as having already been processed by this trigger, it will then check 
- * to see if the UUID persisted in the database is different from that in the static variable. If so, then it knows that the results 
+ * to see if the identifier persisted in the database is different from that in the static variable. If so, then it knows that the results 
  * of its initial run were discarded and that it should not be blocked from executing.
  *
  * For demonstration, this example has logic in the handler. The best practice is delegating to service methods.
