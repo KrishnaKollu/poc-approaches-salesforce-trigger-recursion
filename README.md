@@ -122,7 +122,16 @@ I explored three different ideas for solving these challenges. All ideas extend 
 * Cons
     * Requires a custom field on object.
 
-Of the above approaches, I favor AccountTriggerHandler6.cls.
+*AccountTriggerHandler7.cls*
+* Summary
+    * In addition to leveraging a static variable, the trigger stores the Salesforce Request Id value on processed records to help detect when a rollback occurred.
+    * To keep it light-weight, it will use a "before update" operation to persist the identifier in the database. This avoids having to do a more expensive DML operation.
+    * When the trigger runs, if a record was flagged in a static set as having already been processed by this trigger, it will then check to see if the identifier persisted in the database is different from that in the static variable. If so, then it knows that the results of its initial run were discarded and that it should not be blocked from executing.
+    * This approach is preferable to AccountTriggerHandler6 because it doesn't require creating a custom identifier.
+* Pros
+    * This works for all test cases in AccountTriggerHandlerBaseTest.
+* Cons
+    * Requires a custom field on object.
 
 **Last Words**
 
